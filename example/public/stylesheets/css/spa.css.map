@@ -1,0 +1,7 @@
+{
+"version": 3,
+"mappings": "AAAA,IAAK;EACH,IAAI,EAAE,kDAAkD;;AAG1D,IAAK;EACH,KAAK,EAAE,IAAI;EACX,MAAM,EAAE,IAAI",
+"sources": ["../sass/spa.scss"],
+"names": [],
+"file": "spa.css"
+}

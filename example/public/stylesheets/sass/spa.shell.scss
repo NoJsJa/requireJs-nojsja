@@ -1,0 +1,77 @@
+/* ============================================================================
+  header
+============================================================================= */
+.website-header {
+  padding-left: 10%;
+  padding-right: 10%;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+
+  span {
+    font-size: 1.3rem;
+    color: #374e6c;
+  }
+  img {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    border-radius: 50%;
+  }
+}
+
+
+
+
+/* ============================================================================
+  shell
+============================================================================= */
+.spa-shell {
+  background-color: #F4F5F5;
+  .spa-shell-head {
+    height: 2rem;
+    padding-left: 10%;
+    border-top: solid 2px #f4f5f5;
+    background-color: white;
+
+    .shell-head-item {
+      display: inline-block;
+      padding: 5px 1rem;
+      border-radius: 3px;
+      border-left: solid 1px #aab0b3;
+
+      color: #4b4c52;
+
+      -webkit-transition: all 0.3s;
+    }
+    .head-item-active {
+      background-color: #f4f5f5;
+      color: #404c54;
+    }
+    .shell-head-item:hover {
+      background-color: #f4f5f5;
+      color: #404c54;
+    }
+    .shell-head-item:last-child {
+      border-right: solid 1px #aab0b3;
+    }
+  }
+  .spa-shell-body {
+    min-height: 500px;
+    width: 80%;
+    margin: 1rem auto;
+    background-color: white;
+  }
+  .spa-shell-foot {
+    margin: 0 0 1rem;
+    height: 2rem;
+    line-height: 2rem;
+    border-bottom: solid 2px #f4f5f5;
+
+    background-color: white;
+    text-align: center;
+
+    a {
+      text-decoration: none;
+    }
+  }
+}
