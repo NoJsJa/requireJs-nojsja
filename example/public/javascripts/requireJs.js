@@ -1,4 +1,13 @@
 /* -----------------------------------------------------------------------------
+  1.错误记录：第一次编写是忘记了jsParser里面的代码也可能是异步的，所以采用递归的方法来写evalRequest。
+    解决办法：
+    因为每个模块在定义之前都已经config了，所以依赖关系实现已经明确，在evalRequest方法
+    里不应该采用递归的方法来解决依赖，因为paserJs方法本身解析出来的js代码可能也是异步的，
+    所以只需要在evalRequest方法里预先分析依赖构建依赖树(dependsAnalysis)，然后下载所有依赖，
+    依赖下载完成后再按照依赖分析树的数据解析js即可，此时jsParser方法为同步方法。
+----------------------------------------------------------------------------- */
+
+/* -----------------------------------------------------------------------------
   Require模块说明：
   1.config 配置模块函数
     所有可配置属性：
@@ -66,9 +75,10 @@
 
 /* ------------------- Tree树型数据 ------------------- */
 var Tree = function (name) {
-  this.name = name;
-  this.children = [];
-  this.father = null;
+  this.name = name;  // 节点名
+  this.children = [];  // 所有子节点
+  this.father = null;  // 父节点
+  this.data = null;  // 节点携带的数据
 };
 
 /* 添加子节点 */
@@ -109,6 +119,19 @@ Tree.prototype.wipe = function () {
   });
   this.children = [];
 };
+
+/* 保存数据 */
+Tree.prototype.setData = function (data) {
+  this.data = data;
+};
+
+/* 判断是否有子节点 */
+Tree.prototype.hasChild = function () {
+  if (this.children && this.children.length) return true;
+  return false;
+}
+
+
 
 
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
@@ -204,19 +227,22 @@ var Require = (function () {
   /* ------------------- 请求和解析js文件 ------------------- */
 
   /**
-   * [evalRequest 采用递归来解决下载依赖 - 依赖可能还有依赖的情况可以出现 - 核心算法]
+   * [evalRequest 分析依赖 => 同时异步下载所有依赖 => 按顺序解析依赖 => 回调函数 - 核心算法]
    * @param  {Array}   deps [所有依赖模块]
    * @param  {Function} callback  [回调函数]
    */
   var evalRequest = function (pathArray, callback) {
     var requestFlag = {};
     var _name;
+    var dependsArray = dependsAnalysis(pathArray);  // 拍好顺序的依赖数组
 
     /*   js代码编译   */
     var jsParser = function (jstring, isShim, name) {
-      if (isShim) {
-        eval(
-          "Require.define(" + R_config.shim[name].deps +", function() {" +
+
+      if (typeof jstring === 'string') {
+        if (isShim) {
+          eval(
+            "Require.define(" + R_config.shim[name].deps +", function() {" +
             jstring +
             "console.log('pppp')" +
             "return {" +
@@ -224,25 +250,34 @@ var Require = (function () {
               R_config.shim[name].exports +
             "};" +
 
-          "}, "+ name + ");"
-        );
-      }else {
-        eval(jstring);
+            "}, "+ name + ");"
+          );
+        }else {
+          eval(jstring);
+        }
       }
     };
 
     /*   检查是否下载了所有依赖   */
-    var checkDeps = function (rFlag) {
-      console.log('check:', rFlag);
-      if (Object.keys(rFlag).length == pathArray.length) {
+    var checkDeps = function (rFlag, isShim) {
+      // 所有依赖下载完成
+      if (Object.keys(rFlag).length == dependsArray.length) {
+        console.log('checkDeps: ok!');
+        // 现在按照顺序呢parse代码
+        Object.keys(rFlag).map(function (key) {
+          // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
+          jsParser(rFlag[key], isShim, key);
+        });
+        // 所有模块编译完成后调用回调函数
         callback();
       }
     };
 
-    checkDeps(requestFlag);
+    // 第一次检查依赖
+    checkDeps(requestFlag, false);
 
-    /*   下载所有依赖   */
-    pathArray.map(function (path) {
+    // 下载所有依赖
+    dependsArray.map(function (path) {
 
       // 满足AMD规范 //
       if (R_config.paths[path]) {
@@ -255,25 +290,13 @@ var Require = (function () {
         if (R_modules[path.name]) {
           // 记录请求
           requestFlag[path.name] = R_modules[path.name].main;
-          checkDeps(requestFlag);
+          checkDeps(requestFlag, false);
         }else {
-          evalRequest(path.deps, function (rspData) {
-
-            Utils.request('get', path.url, null, function (rspData) {
-
-              /* ------------------- 大错误！这个paser是异步的 ------------------- */
-              /* -----------------------------------------------------------------------------
-                解决办法：
-                因为每个模块在定义之前都已经config了，所以依赖关系实现已经明确，在evalRequest方法
-                里不应该采用递归的方法来解决依赖，因为paserJs方法本身解析出来的js代码可能也是异步的。
-                所以只需要在evalRequest里分析依赖构建依赖树(dependsAnalysis)，然后根据树来挨个下载依赖，
-                所有依赖构建成功后再以回调函数的方式来使主程序继续运行。
-              ----------------------------------------------------------------------------- */
-              jsParser(rspData, false);
-              // 记录请求
-              requestFlag[path.name] = R_modules[path.name];
-              checkDeps(requestFlag);
-            });
+          Utils.request('get', path.url, null, function (rspData) {
+            // 记录请求
+            requestFlag[path.name] = rspData;
+            // 检查是否下载完成
+            checkDeps(requestFlag, false);
           });
         }
       }
@@ -289,18 +312,13 @@ var Require = (function () {
         if (R_modules[path.name]) {
           // 记录请求
           requestFlag[path.name] = R_modules[path.name].main;
-          checkDeps(requestFlag);
+          checkDeps(requestFlag, true);
         }else {
 
-          evalRequest(path.deps, function () {
-
-            Utils.request('get', path.url, null, function (rspData2) {
-
-              jsParser(rspData, true, path.name);
-              // 记录请求
-              requestFlag[path.name] = R_modules[path.name];
-              checkDeps(requestFlag);
-            });
+          Utils.request('get', path.url, null, function (rspData) {
+            // 记录请求
+            requestFlag[path.name] = rspData;
+            checkDeps(requestFlag, true);
           });
         }
       }
@@ -331,35 +349,50 @@ var Require = (function () {
       return false;
     };
 
-    /* 改变树 */
-    var setTree = function (name, nodes) {
-
-    };
-
     /* 根据依赖情况设置属性 */
-    var setDepends = function (name, deps, dependsTree) {
-      if (!isShim(depend)) {
-        dependsTree.add(new Tree(depend));
-      }else {
-        if (!hasDepends(depend)) {
-          dependsTree.add(new Tree(depend));
-        }else {
-          // 存在依赖的情况
-          setDepends(depend, R_config.paths[depend].deps, dependsTree);
-        }
-      }
+    var setDepends = function (deps, dependsTree) {
+      if (!deps || !deps.length) return;
 
+      deps.map(function (depend) {
+        var _tree =  new Tree(depend);
+
+        if (!isShim(depend)) {
+          dependsTree.add(_tree);
+        }else {
+          if (!hasDepends(depend)) {
+            dependsTree.add(_tree);
+          }else {
+            dependsTree.add(_tree);
+            // 存在依赖的情况
+            setDepends(R_config.paths[depend].deps, _tree);
+          }
+        }
+      });
     };
+
+    /* 深度遍历依赖树 */
+    var sortDepends = function (dependsArray, dependsTree) {
+      if (dependsTree.hasChild()) {
+        dependsTree.children.map(function (child) {
+          dependsArray.unshift(child.name);
+          sortDepends(dependsArray, child);
+        });
+      }
+    }
 
 
     return function (depends) {
       var dependsTree = new Tree('dependsTree');
+      var dependsArray = [];
       // 没有依赖的模块优先放到第一层树
       // 有依赖的模块根据依赖情况放到各个层级
-      depends.map(function (depend) {
-        s
-      });
+      setDepends(deps, dependsTree);
+      // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组
+      // 之后下载所有依赖然后按顺序eval所有代码
+      sortDepends(dependsArray, dependsTree);
 
+      console.log(dependsArray);
+      return dependsArray;
     };
   })();
 
