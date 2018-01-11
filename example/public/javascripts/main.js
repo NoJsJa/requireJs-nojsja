@@ -10,7 +10,10 @@ Require.config({
     'A': '/javascripts/moduleA.js',
     'B': '/javascripts/moduleB.js',
     'C': '/javascripts/moduleC.js',
-    'D': '/javascripts/moduleD.js',
+    'D': {
+      url: '/javascripts/moduleD.js',
+      deps: ['E', 'F'],
+    },
     'E': '/javascripts/moduleE.js',
     'F': '/javascripts/moduleF.js',
   }
@@ -21,11 +24,11 @@ Require.require(['A', 'B', 'C'], function (a, b, c) {
   a.log();
   b.log();
   c.log();
-
-  console.trace(a);
+  // console.trace(a);
 });
 
 /* ------------------- 引用测试2 ------------------- */
 Require.require(['D'], function (d) {
+
   d.log();
 });

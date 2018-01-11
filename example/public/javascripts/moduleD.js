@@ -6,4 +6,5 @@ Require.define(['E', 'F'], function (e, f) {
       f.log();
     }
   };
+
 }, 'D');

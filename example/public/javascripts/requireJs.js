@@ -229,11 +229,11 @@ var Require = (function () {
         if (isShim) {
           eval(
             "Require.define(" + R_config.shim[name].deps +", function() {" +
-            jstring +
-            "return {" +
-              R_config.shim[name].exports + ":" +
-              R_config.shim[name].exports +
-            "};" +
+              jstring +
+              "return {" +
+                R_config.shim[name].exports + ":" +
+                R_config.shim[name].exports +
+              "};" +
 
             "}, "+ name + ");"
           );
@@ -245,12 +245,10 @@ var Require = (function () {
 
     /*   检查是否下载了所有依赖   */
     var checkDeps = function (rFlag, isShim) {
-
       // 所有依赖下载完成
       if (Object.keys(rFlag).length == dependsArray.length) {
-        console.log('checkDeps: ok!');
         // 现在按照顺序呢parse代码
-        Object.keys(rFlag).map(function (key) {
+        Object.keys(rFlag).map(function (key, i) {
           // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
           jsParser(rFlag[key], isShim, key);
         });
@@ -279,7 +277,6 @@ var Require = (function () {
           checkDeps(requestFlag, false);
         }else {
           Utils.request('get', path.url, null, function (rspData) {
-            console.log(path.name, rspData);
             // 记录请求
             requestFlag[path.name] = rspData;
             // 检查是否下载完成
@@ -327,7 +324,8 @@ var Require = (function () {
     var isShim = function (d) {
       if (R_config.paths[d])
         return false;
-      return true;
+      if (R_config.shim[d])
+        return true;
     };
 
     /*   判断是否有其它依赖   */
@@ -346,7 +344,7 @@ var Require = (function () {
       deps.map(function (depend) {
         var _tree =  new Tree(depend);
 
-        if (!isShim(depend)) {
+        if (isShim(depend)) {
           dependsTree.add(_tree);
         }else {
           if (!hasDepends(depend)) {
@@ -381,7 +379,6 @@ var Require = (function () {
       // 之后下载所有依赖然后按顺序eval所有代码
       sortDepends(dependsArray, dependsTree);
 
-      console.log(dependsArray);
       return dependsArray;
     };
 
@@ -398,6 +395,13 @@ var Require = (function () {
   var define = function (deps, done, name) {
 
     var _deps = [], _done, _name, _configType;
+
+    // 获取依赖
+    var getDeps = function (dp) {
+      return dp.map( (function (d) {
+        return R_modules[d].main;
+      }) );
+    };
 
     if (arguments.length < 2) {
       throw (new Error('params count in func "define" is incorrect!'));
@@ -419,7 +423,7 @@ var Require = (function () {
       R_modules[name] = {
         url: R_config[_configType][_name].url || R_config[_configType][_name].url,
         deps: [],
-        main: (_done)()
+        main: _done.apply(null, getDeps([]))
       };
     }else {
       // 递归解决依赖再记录
@@ -427,7 +431,7 @@ var Require = (function () {
         R_modules[name] = {
           url: R_config[_configType][name].url || R_config[_configType][name],
           deps: deps,
-          main: (done)()
+          main: done.apply(null, getDeps(deps))
         };
       });
     }
@@ -449,7 +453,6 @@ var Require = (function () {
         R_config[key][ikey] = object[key][ikey];
       });
     });
-    console.log('config: ', R_config);
   };
 
   /* ------------------- 引入模块 ------------------- */
