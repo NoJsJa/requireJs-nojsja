@@ -1,8 +1,9 @@
-Require.define([], function () {
+Require.define(['E', 'F'], function (e, f) {
 
   return {
     log: function () {
-      console.log('Module D');
+      e.log();
+      f.log();
     }
   };
 }, 'D');

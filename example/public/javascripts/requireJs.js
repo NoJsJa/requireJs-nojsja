@@ -1,15 +1,17 @@
 /* -----------------------------------------------------------------------------
-  1.错误记录：第一次编写是忘记了jsParser里面的代码也可能是异步的，所以采用递归的方法来写evalRequest。
+  1.错误记录：
+      第一次编写时忘记了jsParser里面的代码也可能是异步的，当时采用了递归的方法来写evalRequest。
     解决办法：
-    因为每个模块在定义之前都已经config了，所以依赖关系实现已经明确，在evalRequest方法
-    里不应该采用递归的方法来解决依赖，因为paserJs方法本身解析出来的js代码可能也是异步的，
-    所以只需要在evalRequest方法里预先分析依赖构建依赖树(dependsAnalysis)，然后下载所有依赖，
-    依赖下载完成后再按照依赖分析树的数据解析js即可，此时jsParser方法为同步方法。
+      因为每个模块在定义之前都已经config了，所以依赖关系实现已经明确，在evalRequest方法
+      里不应该采用递归的方法来解决依赖，因为jsPaser方法本身解析出来的js代码可能也是异步的，
+      所以只需要在evalRequest方法里预先分析依赖 构建依赖树(dependsAnalysis)，然后异步下载
+      所有依赖，依赖下载完成后再按照依赖分析树的顺序解析js即可，此时jsParser内部解析的代码可以
+      保证都是同步的代码。
 ----------------------------------------------------------------------------- */
 
 /* -----------------------------------------------------------------------------
-  Require模块说明：
-  1.config 配置模块函数
+  Require使用说明：
+  1.config 配置一个模块的基本信息(main.js中使用)
     所有可配置属性：
     1) baseUrl - 配置Require下载js文件的根路径
     2) paths - 配置遵循Require规范的模块声明
@@ -29,23 +31,17 @@
         - - { // 完整配置
               module_name_shim: {
                 url: 'http://www.xxx.xxx.js',  // 模块地址
-                export: exports.name,  // 该模块暴露给全局window的变量名
-                deps: ['a', 'b'],  // 该模块的所有依赖模块
+                export: exports.name  // 该模块暴露的变量名
               }
             }
 
-        - - { // 简写配置 - 只配置url
-              module_name_shim: 'http://www.xxx.xxx.js'
-            }
-
-  2.define 自定义模块
+  2.define 自定义模块(在配置后，按照配置信息声明define方法即可定义一个模块)
     1) 依赖其它模块
-    define([deps1, deps2], function(d1, d2){
+    define([deps1, deps2], function(dep1, dep2){
       ...
       return {
         do1: do1,
         do2: do2,
-        do3: do3
       }
     }, module_name);
     2) 无其它依赖模块
@@ -54,16 +50,15 @@
       return {
         do1: do1,
         do2: do2,
-        do3: do3
       }
     }, module_name)
 
-  3.require 引用模块
+  3.require 引用模块(依赖的未初始化的模块，Require会自动初始化，自动解决依赖问题)
     require([module1, module2, module3], function(m1, m2, m3) {
       ...
     });
 
-  4.modules模块存储的配置信息
+  4.存储的各个模块配置信息 R_modules
     - - - {
             module_name: {
               url: 'http://www.xxx.xxx.js',  // 远程地址
@@ -87,7 +82,7 @@ Tree.prototype.add = function (tree) {
     throw(new Error('the param of func Tree.add must be an instance of Tree'));
   }
   tree.setFather(this);
-  this.add(tree);
+  this.children.push(tree);
 };
 
 /* 设置节点名 */
@@ -181,47 +176,39 @@ var Require = (function () {
     getXMLHttpRequest: function () {
       var that = this;
       // 惰性载入获取XHR对象
-      this.getXMLHttpRequest = function() {
+      if (typeof XMLHttpRequest != "undefined") {
+        that.getXMLHttpRequest = function () {
+          return new XMLHttpRequest();
+        };
+        return that.getXMLHttpRequest();
 
-        if (typeof XMLHttpRequest != "undefined") {
-          that.getXMLHttpRequest = function () {
-            return new XMLHttpRequest();
-          };
+      } else if (typeof ActiveXObject !== "undefined") {
 
-        } else if (typeof ActiveXObject !== "undefined") {
+        that.getXMLHttpRequest = function () {
+          if (typeof arguments.callee.activeXString != "string") {
+            var versions = [
+              "MSXML2.XMLHttp.6.0", "MSXML2.XMLHttp.3.0",
+              "MSXML2.XMLHttp"
+            ], i, len;
 
-          that.getXMLHttpRequest = function () {
-            if (typeof arguments.callee.activeXString != "string") {
-              var versions = [
-                "MSXML2.XMLHttp.6.0", "MSXML2.XMLHttp.3.0",
-                "MSXML2.XMLHttp"
-              ], i, len;
+            for (i = 0, len = versions.length; i < len; i++) {
+              try {
+                new ActiveXObject(versions[i]);
+                arguments.callee.activeXString = versions[i];
+                break;
+              } catch (e) {
 
-              for (i = 0, len = versions.length; i < len; i++) {
-                try {
-                  new ActiveXObject(versions[i]);
-                  arguments.callee.activeXString = versions[i];
-                  break;
-                } catch (e) {
-
-                } finally {
-
-                }
-              }
+              } finally { }
             }
+          }
+          return new ActiveXObject(arguments.callee.activeXString);
+        };
+        return that.getXMLHttpRequest();
 
-            return new ActiveXObject(arguments.callee.activeXString);
-          };
-
-        } else {
-          that.getXMLHttpRequest = function () {
-            console.error("No XML object avaliable");
-            return null;
-          };
-        }
-      };
+      } else {
+        throw(new Error('No XML object avaliable'));
+      }
     }
-
   };
 
   /* ------------------- 请求和解析js文件 ------------------- */
@@ -233,8 +220,7 @@ var Require = (function () {
    */
   var evalRequest = function (pathArray, callback) {
     var requestFlag = {};
-    var _name;
-    var dependsArray = dependsAnalysis(pathArray);  // 拍好顺序的依赖数组
+    var dependsArray = dependsAnalysis(pathArray);  // 排好顺序的依赖数组
 
     /*   js代码编译   */
     var jsParser = function (jstring, isShim, name) {
@@ -244,7 +230,6 @@ var Require = (function () {
           eval(
             "Require.define(" + R_config.shim[name].deps +", function() {" +
             jstring +
-            "console.log('pppp')" +
             "return {" +
               R_config.shim[name].exports + ":" +
               R_config.shim[name].exports +
@@ -260,6 +245,7 @@ var Require = (function () {
 
     /*   检查是否下载了所有依赖   */
     var checkDeps = function (rFlag, isShim) {
+
       // 所有依赖下载完成
       if (Object.keys(rFlag).length == dependsArray.length) {
         console.log('checkDeps: ok!');
@@ -278,7 +264,7 @@ var Require = (function () {
 
     // 下载所有依赖
     dependsArray.map(function (path) {
-
+      var _name;
       // 满足AMD规范 //
       if (R_config.paths[path]) {
         _name = path;
@@ -293,6 +279,7 @@ var Require = (function () {
           checkDeps(requestFlag, false);
         }else {
           Utils.request('get', path.url, null, function (rspData) {
+            console.log(path.name, rspData);
             // 记录请求
             requestFlag[path.name] = rspData;
             // 检查是否下载完成
@@ -302,10 +289,10 @@ var Require = (function () {
       }
 
       // 需要包装成AMD的脚本 //
-      if (R_config.shim[path]) {
+      else if (R_config.shim[path]) {
         _name = path;
         path = (typeof R_config.shim[path]) == 'string' ?
-                {url: path, deps: []} : R_config.shim[path];
+                {url: R_config.shim[path], deps: []} : R_config.shim[path];
         path.name = _name;
 
         // 如果模块已经被下载
@@ -321,6 +308,9 @@ var Require = (function () {
             checkDeps(requestFlag, true);
           });
         }
+
+      } else {
+        throw(new Error('eval deps error!'));
       }
 
     });
@@ -362,8 +352,8 @@ var Require = (function () {
           if (!hasDepends(depend)) {
             dependsTree.add(_tree);
           }else {
+            // 存储引用、递归依赖
             dependsTree.add(_tree);
-            // 存在依赖的情况
             setDepends(R_config.paths[depend].deps, _tree);
           }
         }
@@ -378,7 +368,7 @@ var Require = (function () {
           sortDepends(dependsArray, child);
         });
       }
-    }
+    };
 
 
     return function (depends) {
@@ -386,7 +376,7 @@ var Require = (function () {
       var dependsArray = [];
       // 没有依赖的模块优先放到第一层树
       // 有依赖的模块根据依赖情况放到各个层级
-      setDepends(deps, dependsTree);
+      setDepends(depends, dependsTree);
       // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组
       // 之后下载所有依赖然后按顺序eval所有代码
       sortDepends(dependsArray, dependsTree);
@@ -394,19 +384,19 @@ var Require = (function () {
       console.log(dependsArray);
       return dependsArray;
     };
+
   })();
 
-  /* ------------------- 定义模块 ------------------- */
+  /* ------------------- 模块定义函数 ------------------- */
 
   /**
    * [define 定义模块]
    * @param  { Array }    deps [模块依赖]
-   * @param  { String }   name [模块名]
    * @param  { Function } done [包裹作用域的回调函数]
    * @param  { String }   name [模块名]
    */
   var define = function (deps, done, name) {
-    console.log(deps, done, name);
+
     var _deps = [], _done, _name, _configType;
 
     if (arguments.length < 2) {
@@ -478,12 +468,12 @@ var Require = (function () {
     };
 
     evalRequest(deps, function () {
-      callback.applay(null, getDeps(deps) );
+      callback.apply(null, getDeps(deps) );
     });
   };
 
 
-  /* ------------------- 返回调用接口 ------------------- */
+  /* ------------------- 返回Require调用接口 ------------------- */
   return {
     define: define,
     config: config,

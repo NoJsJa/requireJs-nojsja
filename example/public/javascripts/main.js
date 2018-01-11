@@ -10,12 +10,22 @@ Require.config({
     'A': '/javascripts/moduleA.js',
     'B': '/javascripts/moduleB.js',
     'C': '/javascripts/moduleC.js',
+    'D': '/javascripts/moduleD.js',
+    'E': '/javascripts/moduleE.js',
+    'F': '/javascripts/moduleF.js',
   }
 });
 
-/* ------------------- 引用 ------------------- */
+/* ------------------- 引用测试1 ------------------- */
 Require.require(['A', 'B', 'C'], function (a, b, c) {
   a.log();
   b.log();
   c.log();
+
+  console.trace(a);
+});
+
+/* ------------------- 引用测试2 ------------------- */
+Require.require(['D'], function (d) {
+  d.log();
 });
