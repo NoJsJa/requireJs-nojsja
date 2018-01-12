@@ -27,17 +27,46 @@ Require.config({
   }
 });
 
-/* ------------------- 引用测试1 ------------------- */
-Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
-  console.log('-------- require test 1 --------');
-  a.log();
-  b.log();
-  c.log();
-  // console.trace(a);
-});
+/* ------------------- console wrapper ------------------- */
+var Console = {
+  log: window.console.log.bind(window),
+  error: window.console.error.bind(window),
+  index: 1,
+  consoleDom: document.querySelector('.console-wrapper > textarea'),
+};
 
-/* ------------------- 引用测试2 ------------------- */
-Require.require(['moduleD'], function (d) {
-  console.log('-------- require test 2 --------');
-  d.log();
-});
+window.console.log = function (info) {
+  Console.consoleDom.style = '';
+  Console.log(info);
+  Console.consoleDom.value =
+    Console.consoleDom.value + '\r\n' + '[' + Console.index + '] ' + info;
+  Console.index ++;
+};
+
+window.console.error = function (info) {
+
+  console.log(info);
+  Console.consoleDom.style.color = "#e9471c";
+};
+
+/* ************************* main ************************* */
+
+try {
+  /* ------------------- 引用测试1 ------------------- */
+  Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
+    console.log('-------- require test 1 --------');
+    a.log();
+    b.log();
+    c.log();
+    // console.trace(a);
+  });
+
+  /* ------------------- 引用测试2 ------------------- */
+  Require.require(['moduleD'], function (d) {
+    console.log('-------- require test 2 --------');
+    d.log();
+  });
+
+} catch (e) {
+  console.error(e);
+}

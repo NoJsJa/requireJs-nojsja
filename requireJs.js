@@ -9,139 +9,89 @@
       保证都是同步的代码。
 ----------------------------------------------------------------------------- */
 
-/* -----------------------------------------------------------------------------
-  Require使用说明：
-  1.config 配置一个模块的基本信息(main.js中使用)
-    所有可配置属性：
-    1) baseUrl - 配置Require下载js文件的根路径
-    2) paths - 配置遵循Require规范的模块声明
-        - - { // 完整配置
-              module_name: {
-                 url: 'http://www.xxx.xxx.js',  // 模块地址
-                 deps: ['a', 'b'],  // 该模块的所有依赖模块
-              }
-            }
-
-        - - { // 简写配置 - 只配置url
-              module_name: 'http://www.xxx.xxx.js'
-            }
-
-
-    3) shim - 配置不遵循Require规范的模块声明
-        - - { // 完整配置
-              module_name_shim: {
-                url: 'http://www.xxx.xxx.js',  // 模块地址
-                export: exports.name  // 该模块暴露的变量名
-              }
-            }
-
-  2.define 自定义模块(在配置后，按照配置信息声明define方法即可定义一个模块)
-    1) 依赖其它模块
-    define([deps1, deps2], function(dep1, dep2){
-      ...
-      return {
-        do1: do1,
-        do2: do2,
-      }
-    }, module_name);
-    2) 无其它依赖模块
-    define(function() {
-      ...
-      return {
-        do1: do1,
-        do2: do2,
-      }
-    }, module_name)
-
-  3.require 引用模块(依赖的未初始化的模块，Require会自动初始化，自动解决依赖问题)
-    require([module1, module2, module3], function(m1, m2, m3) {
-      ...
-    });
-
-  4.存储的各个模块配置信息 R_modules
-    - - - {
-            module_name: {
-              url: 'http://www.xxx.xxx.js',  // 远程地址
-              deps: [dep1, dep2],  // 依赖
-              main: (function(){})(),  // 模块的引用
-            }
-          }
------------------------------------------------------------------------------ */
-
 /* ------------------- Tree树型数据 ------------------- */
-var Tree = function (name) {
-  this.name = name;  // 节点名
-  this.children = [];  // 所有子节点
-  this.father = null;  // 父节点
-  this.data = null;  // 节点携带的数据
-};
+var Tree = (function () {
 
-/* 添加子节点 */
-Tree.prototype.add = function (tree) {
-  if ( !(tree instanceof Tree) ) {
-    throw(new Error('the param of func Tree.add must be an instance of Tree'));
-  }
-  tree.setFather(this);
-  this.children.push(tree);
-};
+  var _Tree = function (name) {
+    this.name = name;  // 节点名
+    this.children = [];  // 所有子节点
+    this.father = null;  // 父节点
+    this.data = null;  // 节点携带的数据
+  };
 
-/* 设置节点名 */
-Tree.prototype.setFather = function (father) {
-  if ( !(father instanceof Tree) ) {
-    throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
-  }
-  this.father = father;
-};
-
-/* 删除子节点 */
-Tree.prototype.delete = function (tree) {
-  if ( !(tree instanceof Tree) ) {
-    throw(new Error('the param of func Tree.delete must be an instance of Tree'));
-  }
-  this.children.map(function (child, i) {
-    if (child === tree) {
-      this.children.splice(i, 1);
-      tree.setFather(null);
+  /* 添加子节点 */
+  _Tree.prototype.add = function (tree) {
+    if ( !(tree instanceof Tree) ) {
+      throw(new Error('the param of func Tree.add must be an instance of Tree'));
     }
-  })
+    tree.setFather(this);
+    this.children.push(tree);
+  };
 
-};
+  /* 设置节点名 */
+  _Tree.prototype.setFather = function (father) {
+    if ( !(father instanceof Tree) ) {
+      throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
+    }
+    this.father = father;
+  };
 
-/* 清空子节点 */
-Tree.prototype.wipe = function () {
-  this.children.map(function (child) {
-    child.setFather(null);
-  });
-  this.children = [];
-};
+  /* 删除子节点 */
+  _Tree.prototype.delete = function (tree) {
+    if ( !(tree instanceof Tree) ) {
+      throw(new Error('the param of func Tree.delete must be an instance of Tree'));
+    }
+    this.children.map(function (child, i) {
+      if (child === tree) {
+        this.children.splice(i, 1);
+        tree.setFather(null);
+      }
+    })
 
-/* 保存数据 */
-Tree.prototype.setData = function (data) {
-  this.data = data;
-};
+  };
 
-/* 判断是否有子节点 */
-Tree.prototype.hasChild = function () {
-  if (this.children && this.children.length) return true;
-  return false;
-}
+  /* 清空子节点 */
+  _Tree.prototype.wipe = function () {
+    this.children.map(function (child) {
+      child.setFather(null);
+    });
+    this.children = [];
+  };
 
+  /* 保存数据 */
+  _Tree.prototype.setData = function (data) {
+    this.data = data;
+  };
 
+  /* 判断是否有子节点 */
+  _Tree.prototype.hasChild = function () {
+    if (this.children && this.children.length) return true;
+    return false;
+  }
+
+  return _Tree;
+})();
 
 
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
 var Require = (function () {
 
-  /*   Require配置文件   */
+  /* ------------------- Require配置文件 ------------------- */
   var R_config = {
-    baseUrl: '/',  // 默认根目录
+    baseUrl: null,  // 默认根目录
     paths: { },
     shim: { },
     configable: ['baseUrl', 'paths', 'shim'],  // 可配置属性
   };
 
-  /*   自动更新的模块信息   */
-  var R_modules = {};
+  /* ------------------- 模块信息配置文件 ------------------- */
+  var R_modules = {
+     module_name: {
+       url: '/xxx/xx.js',
+       main: {},
+     }
+  };
+
 
   /* ------------------- 工具函数 ------------------- */
   var Utils = {
@@ -372,11 +322,9 @@ var Require = (function () {
     return function (depends) {
       var dependsTree = new Tree('dependsTree');
       var dependsArray = [];
-      // 没有依赖的模块优先放到第一层树
-      // 有依赖的模块根据依赖情况放到各个层级
+      // 构建依赖分析树
       setDepends(depends, dependsTree);
-      // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组
-      // 之后下载所有依赖然后按顺序eval所有代码
+      // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组，按照顺序解析所有代码
       sortDepends(dependsArray, dependsTree);
 
       return dependsArray;
@@ -394,7 +342,7 @@ var Require = (function () {
    */
   var define = function (deps, done, name) {
 
-    var _deps = [], _done, _name, _configType;
+    var _configType;
 
     // 获取依赖
     var getDeps = function (dp) {
@@ -407,6 +355,12 @@ var Require = (function () {
       throw (new Error('params count in func "define" is incorrect!'));
     }
 
+    if (arguments.length == 2) {
+      name = done;
+      done = deps;
+      deps = [];
+    }
+
     /*   判断是否符合标准   */
     if (R_config.paths[name]) {
       _configType = 'paths';
@@ -416,25 +370,15 @@ var Require = (function () {
       throw new Error('module: ' + name + 'should be configure before define it!');
     }
 
-    /*   判断是否有依赖模块   */
-    if (arguments.length == 2) {
-      // 直接把模块记录到配置文件
-      _done = deps, _name = done;
+    // 解决依赖
+    evalRequest(deps, function () {
       R_modules[name] = {
-        url: R_config[_configType][_name].url || R_config[_configType][_name].url,
-        deps: [],
-        main: _done.apply(null, getDeps([]))
+        url: R_config[_configType][name].url || R_config[_configType][name],
+        deps: deps,
+        main: typeof done === 'function' ?
+                done.apply(null, getDeps(deps)) : done
       };
-    }else {
-      // 递归解决依赖再记录
-      evalRequest(deps, function () {
-        R_modules[name] = {
-          url: R_config[_configType][name].url || R_config[_configType][name],
-          deps: deps,
-          main: done.apply(null, getDeps(deps))
-        };
-      });
-    }
+    });
   };
 
   /* ------------------- 配置 ------------------- */
@@ -447,11 +391,42 @@ var Require = (function () {
     if (!object || typeof object !== 'object')
       throw(new Error('params must be an object in func config'));
 
+    // 获取真实路径
+    var getUrl = function (_object, _url) {
+      var baseUrl = _object.baseUrl || R_config.baseUrl || '';
+
+      if (baseUrl) {
+        if (baseUrl.indexOf('http') !== -1)
+          baseUrl = '';
+        else if (baseUrl[baseUrl.length - 1] != '/')
+          baseUrl = baseUrl + '/';
+      }
+      if (_url) {
+        if (_url[0] === '/')
+          baseUrl = '';
+        else if(_url.slice(0, 2) === './')
+          _url = _url.slice(2);
+      }
+
+      return baseUrl + _url;
+    };
+
     Object.keys(object).map(function (key) {
       if (!object[key] || R_config.configable.indexOf(key) < 0) return;
-      Object.keys(object[key]).map(function (ikey) {
-        R_config[key][ikey] = object[key][ikey];
-      });
+      // 路径处理
+      if (key === 'paths' || key === 'shim') {
+        Object.keys(object[key]).map(function (ikey) {
+          if (typeof object[key][ikey] === 'object') {
+            object[key][ikey].url = getUrl(object, object[key][ikey].url);
+            R_config[key][ikey] = object[key][ikey];
+          }else {
+            R_config[key][ikey] = getUrl(object, object[key][ikey]);
+          }
+        });
+
+      }else {
+         R_config[key] = object[key];
+      }
     });
   };
 

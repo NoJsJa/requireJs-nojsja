@@ -76,7 +76,7 @@ var Tree = (function () {
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
 var Require = (function () {
 
-  /*   Require配置文件   */
+  /* ------------------- Require配置文件 ------------------- */
   var R_config = {
     baseUrl: null,  // 默认根目录
     paths: { },
@@ -84,8 +84,14 @@ var Require = (function () {
     configable: ['baseUrl', 'paths', 'shim'],  // 可配置属性
   };
 
-  /*   自动更新的模块信息   */
-  var R_modules = {};
+  /* ------------------- 模块信息配置文件 ------------------- */
+  var R_modules = {
+     module_name: {
+       url: '/xxx/xx.js',
+       main: {},
+     }
+  };
+
 
   /* ------------------- 工具函数 ------------------- */
   var Utils = {

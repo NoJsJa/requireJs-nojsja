@@ -7,21 +7,23 @@ ____________________
 #### How To Use ?
 ______________
 
-__1. config 配置一个模块的基本信息(main.js中使用)__  
+__1. config module info in main.js__  
 
-  所有可配置属性：  
-  * baseUrl - address of remote root catalog    
-  > 1) Default baseUrl is null, so requireJs will search all modules in the catalog where requireJs.js is when it's null.  
-  > 2) After configuring baseUrl, all module-url is base on baseUrl, e.g. if baseUrl is ' / ' and moduleA url is ' js/a.js ', finally the real url will be ' /js/a.js '.  
-  > 3) When you configured baseUrl, but in the situation that module url begin with ' / ' or url protocol like ' http/https ', requireJs will also search module by only module url you configured before, baseUrl will be ignored.
+  all configable attributes：  
+  * baseUrl - address of remote root catalog  
 
-    ```js
-      Require.config({
-        baseUrl: '/'
-      });
-    ```
+  > (1) Default baseUrl is null, so requireJs will search all modules in the catalog where requireJs.js is when it's null.  
+  > (2) After configuring baseUrl, all module-url is base on baseUrl, e.g. if baseUrl is ' / ' and moduleA url is ' js/a.js ', finally the real url will be ' /js/a.js '.  
+  > (3) When you configured baseUrl, but in the situation that module url begin with ' / ' or url protocol like ' http/https ', requireJs will also search module by only module url you configured before, baseUrl will be ignored.
+
+  ```js
+    Require.config({
+      baseUrl: '/'
+    });
+  ```
 
   * paths - module satisfying AMD standard  
+
     ```js
        // complete
        Require.config({
@@ -38,6 +40,7 @@ __1. config 配置一个模块的基本信息(main.js中使用)__
     ```
 
   * shim - module not satisfying AMD standard
+
     ```js
         Require.config({
           module_name: {
@@ -47,7 +50,7 @@ __1. config 配置一个模块的基本信息(main.js中使用)__
         });
     ```
 
-__2. define 自定义模块(在配置后，按照配置信息声明define方法即可定义一个模块)__  
+__2. define a module__  
 
   * module with depends  
   ```js
@@ -71,7 +74,8 @@ __2. define 自定义模块(在配置后，按照配置信息声明define方法�
     }, module_name);
   ```
 
-__3. require 引用模块(依赖的未初始化的模块，Require会自动初始化，自动解决依赖问题)__   
+__3. use a module__   
+
   ```js
     Require.require([module1, module2, module3], function(m1, m2, m3) {
       m1.doSomething();
@@ -80,7 +84,8 @@ __3. require 引用模块(依赖的未初始化的模块，Require会自动初�
     });
   ```
 
-__4. 存储的各个模块配置信息 R_modules-info__  
+__4. module info__  
+
   ```js
     {
       module_name: {
@@ -93,6 +98,17 @@ __4. 存储的各个模块配置信息 R_modules-info__
 
 #### Example
 ______________
+
+```bash
+  # 1.cd example root directory
+  cd example;
+  # 2.install all packages
+  npm install;
+  # 3.run the demo
+  npm start;
+  # 4.open browser and check console
+  open the page 'http://localhost:3000/index';
+```
 
 __1. index.html__  
 
@@ -114,35 +130,43 @@ __2. main.js__
 
 ```js
   /* ------------------- config at fist ------------------- */
-  Require.config({
-    paths: {
-      'A': '/javascripts/moduleA.js',
-      'B': '/javascripts/moduleB.js',
-      'C': '/javascripts/moduleC.js',
-      'D': {
-        url: '/javascripts/moduleD.js',
-        deps: ['E', 'F'],
-      },
-      'E': '/javascripts/moduleE.js',
-      'F': '/javascripts/moduleF.js',
-    }
-  });
+    Require.config({
+      baseUrl: '/',
+      paths: {
+        /*   引用测试1配置   */
+        'moduleA': './javascripts/moduleA.js',  // 相对于当前目录
+        'moduleB': '/javascripts/moduleB.js',  // 不使用baseUrl
+        'moduleC': 'javascripts/moduleC.js',
+
+        /*   引用测试2配置   */
+        'moduleD': {
+          url: './javascripts/moduleD.js',
+          deps: ['moduleE', 'moduleF'],
+        },
+        'moduleE': 'javascripts/moduleE.js',
+        'moduleF': {
+          url: 'javascripts/moduleF.js',
+          deps: ['moduleG'],
+        },
+        'moduleG': 'javascripts/moduleG.js',
+      }
+    });
 
   /* ------------------- require demo1 ------------------- */
-  Require.require(['A', 'B', 'C'], function (a, b, c) {
-    // check browser console
-    a.log();
-    b.log();
-    c.log();
-    // console.trace(a);
-  });
+    Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
+      console.log('-------- require test 1 --------');
+      a.log();
+      b.log();
+      c.log();
+      // console.trace(a);
+    });
 
-  /* ------------------- require demo2 ------------------- */
-  Require.require(['D'], function (d) {
-    // check browser console
-    d.log();
-    // console.trace(d);
-  });
+    /* ------------------- require demo2 ------------------- */
+    Require.require(['moduleD'], function (d) {
+      console.log('-------- require test 2 --------');
+      d.log();
+    });
+
 ```
 
 __3. module.js__  
@@ -155,18 +179,19 @@ __3. module.js__
       log: function () {
         console.log('Module A');
       }
-    };
-  }, 'A');
+    }
+  }, 'moduleA');
 
 /* ------------------- module D define ------------------- */
-  Require.define(['E', 'F'], function (e, f) {
+  Require.define(['moduleE', 'moduleF'], function (e, f) {
 
     return {
       log: function () {
         e.log();
         f.log();
+        console.log('Module D');
       }
     };
 
-  }, 'D');
+  }, 'moduleD');
 ```
