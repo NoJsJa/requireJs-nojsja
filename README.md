@@ -10,14 +10,18 @@ ______________
 __1. config 配置一个模块的基本信息(main.js中使用)__  
 
   所有可配置属性：  
-  * baseUrl - 配置Require下载js文件的根路径  
+  * baseUrl - address of remote root catalog    
+  > 1) Default baseUrl is null, so requireJs will search all modules in the catalog where requireJs.js is when it's null.  
+  > 2) After configuring baseUrl, all module-url is base on baseUrl, e.g. if baseUrl is ' / ' and moduleA url is ' js/a.js ', finally the real url will be ' /js/a.js '.  
+  > 3) When you configured baseUrl, but in the situation that module url begin with ' / ' or url protocol like ' http/https ', requireJs will also search module by only module url you configured before, baseUrl will be ignored.
+
     ```js
       Require.config({
         baseUrl: '/'
       });
     ```
 
-  * paths - 配置遵循Require规范的模块声明  
+  * paths - module satisfying AMD standard  
     ```js
        // complete
        Require.config({
@@ -33,10 +37,10 @@ __1. config 配置一个模块的基本信息(main.js中使用)__
        });
     ```
 
-  * shim - 配置不遵循Require规范的模块声明
+  * shim - module not satisfying AMD standard
     ```js
         Require.config({
-          module_name_shim: {
+          module_name: {
             url: 'http://www.xxx.xxx.js',  // remote url
             export: exports.name  // module-name export to requireJs
           }
@@ -45,7 +49,7 @@ __1. config 配置一个模块的基本信息(main.js中使用)__
 
 __2. define 自定义模块(在配置后，按照配置信息声明define方法即可定义一个模块)__  
 
-  1) 依赖其它模块 - configure depends  
+  * module with depends  
   ```js
     Require.define([deps1, deps2], function(dep1, dep2){
       ...
@@ -56,7 +60,7 @@ __2. define 自定义模块(在配置后，按照配置信息声明define方法�
     }, module_name);
   ```
 
-  2) 无其它依赖模块 - no depends  
+  * module without depends  
   ```js
     Require.define(function() {
       ...

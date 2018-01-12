@@ -1,3 +1,4 @@
+/* ------------------- module C without deps ------------------- */
 Require.define([], function () {
 
   var log = function () {
@@ -7,4 +8,4 @@ Require.define([], function () {
   return {
     log: log
   }
-}, 'C');
+}, 'moduleC');

@@ -1,3 +1,4 @@
+/* ------------------- module E without deps ------------------- */
 Require.define([], function () {
 
   return {
@@ -5,4 +6,4 @@ Require.define([], function () {
       console.log('Module E');
     }
   }
-}, 'E');
+}, 'moduleE');
