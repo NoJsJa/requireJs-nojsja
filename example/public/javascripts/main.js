@@ -6,29 +6,29 @@
 
 /* ------------------- 配置 ------------------- */
 Require.config({
-  baseUrl: '/',
+  // baseUrl: '/javascripts/',
   paths: {
     /*   引用测试1配置   */
-    'moduleA': './javascripts/moduleA.js',  // 相对于当前目录
+    'moduleA': './moduleA.js',  // 相对于当前目录
     'moduleB': '/javascripts/moduleB.js',  // 不使用baseUrl
-    'moduleC': 'javascripts/moduleC.js',
+    'moduleC': 'moduleC.js',
 
     /*   引用测试2配置   */
     'moduleD': {
-      url: './javascripts/moduleD.js',
+      url: 'moduleD.js',
       deps: ['moduleE', 'moduleF'],
     },
-    'moduleE': 'javascripts/moduleE.js',
+    'moduleE': 'moduleE.js',
     'moduleF': {
-      url: 'javascripts/moduleF.js',
+      url: 'moduleF.js',
       deps: ['moduleG'],
     },
-    'moduleG': 'javascripts/moduleG.js',
+    'moduleG': 'moduleG.js',
   },
   shim: {
     /*   引用测试3配置   */
     'moduleH': {
-      url: 'javascripts/moduleH.js',
+      url: 'moduleH.js',
       exports: 'log',
     },
   }

@@ -18,7 +18,7 @@ __1. config module info in main.js__
 
   ```js
     Require.config({
-      baseUrl: '/'
+      baseUrl: '/javascripts'
     });
   ```
 
@@ -89,7 +89,7 @@ __4. module info__
   ```js
     {
       module_name: {
-        url: '/xxx/xxx.js',  // real url
+        url: 'http://xxx/xxx.js',  // real url
         deps: [dep1, dep2],  // depends
         main: (function(){...})(),  // stored in memory
       }
@@ -133,29 +133,29 @@ __2. main.js__
 ```js
   /* ------------------- config at fist ------------------- */
     Require.config({
-      baseUrl: '/',
+      baseUrl: 'javascripts',
       paths: {
         /*   config test 1   */
-        'moduleA': './javascripts/moduleA.js',  // 相对于当前目录
+        'moduleA': './moduleA.js',  // 相对于当前目录
         'moduleB': '/javascripts/moduleB.js',  // 不使用baseUrl
-        'moduleC': 'javascripts/moduleC.js',
+        'moduleC': 'moduleC.js',
 
         /*   config test 2   */
         'moduleD': {
-          url: './javascripts/moduleD.js',
+          url: 'moduleD.js',
           deps: ['moduleE', 'moduleF'],
         },
-        'moduleE': 'javascripts/moduleE.js',
+        'moduleE': 'moduleE.js',
         'moduleF': {
-          url: 'javascripts/moduleF.js',
+          url: 'moduleF.js',
           deps: ['moduleG'],
         },
-        'moduleG': 'javascripts/moduleG.js',
+        'moduleG': 'moduleG.js',
       },
       shim: {
         /*   config test 3   */
         'moduleH': {
-          url: 'javascripts/moduleH.js',
+          url: 'moduleH.js',
           exports: 'log',
         },
       }

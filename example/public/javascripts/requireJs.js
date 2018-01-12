@@ -395,13 +395,13 @@ var Require = (function () {
       var baseUrl = _object.baseUrl || R_config.baseUrl || '';
 
       if (baseUrl) {
-        if (baseUrl.indexOf('http') !== -1)
-          baseUrl = '';
-        else if (baseUrl[baseUrl.length - 1] != '/')
+        if (baseUrl[baseUrl.length - 1] != '/')
           baseUrl = baseUrl + '/';
       }
       if (_url) {
-        if (_url[0] === '/')
+        if (_url.indexOf('http') !== -1) {
+          baseUrl = '';
+        }else if (_url[0] === '/')
           baseUrl = '';
         else if(_url.slice(0, 2) === './')
           _url = _url.slice(2);
@@ -451,6 +451,17 @@ var Require = (function () {
       callback.apply(null, getDeps(deps) );
     });
   };
+
+  /* ------------------- 框架初始化时的方法 ------------------- */
+  void function () {
+    var scriptDom =  document.querySelector('script');
+    // http://localhost:3000/javascripts/requireJs.js
+    var scriptUrl = scriptDom.src;
+    var url = scriptUrl.split('/');
+    url.pop();
+    url = url.join('/');
+    R_config.baseUrl = url;
+  }();
 
 
   /* ------------------- 返回Require调用接口 ------------------- */
