@@ -24,6 +24,13 @@ Require.config({
       deps: ['moduleG'],
     },
     'moduleG': 'javascripts/moduleG.js',
+  },
+  shim: {
+    /*   引用测试3配置   */
+    'moduleH': {
+      url: 'javascripts/moduleH.js',
+      exports: 'log',
+    },
   }
 });
 
@@ -34,6 +41,7 @@ var Console = {
   index: 1,
   consoleDom: document.querySelector('.console-wrapper > textarea'),
 };
+Console.consoleDom.value = '';
 
 window.console.log = function (info) {
   Console.consoleDom.style = '';
@@ -51,22 +59,23 @@ window.console.error = function (info) {
 
 /* ************************* main ************************* */
 
-try {
-  /* ------------------- 引用测试1 ------------------- */
-  Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
-    console.log('-------- require test 1 --------');
-    a.log();
-    b.log();
-    c.log();
-    // console.trace(a);
-  });
+/* ------------------- require test 1 ------------------- */
+Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
+  console.log('-------- require test 1 --------');
+  a.log();
+  b.log();
+  c.log();
+  // console.trace(a);
+});
 
-  /* ------------------- 引用测试2 ------------------- */
-  Require.require(['moduleD'], function (d) {
-    console.log('-------- require test 2 --------');
-    d.log();
-  });
+/* ------------------- require test 2 ------------------- */
+Require.require(['moduleD'], function (d) {
+  console.log('-------- require test 2 --------');
+  d.log();
+});
 
-} catch (e) {
-  console.error(e);
-}
+/* ------------------- require test 3 ------------------- */
+Require.require(['moduleH'], function (h) {
+  console.log('-------- require test 3 --------');
+  h.log();
+});

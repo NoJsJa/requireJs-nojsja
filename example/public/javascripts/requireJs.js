@@ -86,10 +86,10 @@ var Require = (function () {
 
   /* ------------------- 模块信息配置文件 ------------------- */
   var R_modules = {
-     module_name: {
-       url: '/xxx/xx.js',
-       main: {},
-     }
+     // module_name: {
+     //   url: '/xxx/xx.js',
+     //   main: {},
+     // }
   };
 
 
@@ -174,18 +174,17 @@ var Require = (function () {
 
     /*   js代码编译   */
     var jsParser = function (jstring, isShim, name) {
-
       if (typeof jstring === 'string') {
         if (isShim) {
           eval(
-            "Require.define(" + R_config.shim[name].deps +", function() {" +
+            "Require.define(" + JSON.stringify(R_config.shim[name].deps) +", function() {" +
               jstring +
               "return {" +
                 R_config.shim[name].exports + ":" +
                 R_config.shim[name].exports +
               "};" +
 
-            "}, "+ name + ");"
+            "}, '"+ name + "' );"
           );
         }else {
           eval(jstring);
@@ -418,6 +417,8 @@ var Require = (function () {
         Object.keys(object[key]).map(function (ikey) {
           if (typeof object[key][ikey] === 'object') {
             object[key][ikey].url = getUrl(object, object[key][ikey].url);
+            object[key][ikey].deps =
+              object[key][ikey].deps ? object[key][ikey].deps : [];
             R_config[key][ikey] = object[key][ikey];
           }else {
             R_config[key][ikey] = getUrl(object, object[key][ikey]);
@@ -428,6 +429,7 @@ var Require = (function () {
          R_config[key] = object[key];
       }
     });
+
   };
 
   /* ------------------- 引入模块 ------------------- */
@@ -440,9 +442,9 @@ var Require = (function () {
   var require = function (deps, callback) {
     /*   引用依赖模块   */
     var getDeps = function (dp) {
-      return dp.map( (function (d) {
+      return dp.map(function (d) {
         return R_modules[d].main;
-      }) );
+      });
     };
 
     evalRequest(deps, function () {

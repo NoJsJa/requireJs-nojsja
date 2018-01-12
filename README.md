@@ -12,9 +12,9 @@ __1. config module info in main.js__
   all configable attributes：  
   * baseUrl - address of remote root catalog  
 
-  > (1) Default baseUrl is null, so requireJs will search all modules in the catalog where requireJs.js is when it's null.  
-  > (2) After configuring baseUrl, all module-url is base on baseUrl, e.g. if baseUrl is ' / ' and moduleA url is ' js/a.js ', finally the real url will be ' /js/a.js '.  
-  > (3) When you configured baseUrl, but in the situation that module url begin with ' / ' or url protocol like ' http/https ', requireJs will also search module by only module url you configured before, baseUrl will be ignored.
+  > (1) default baseUrl is null, so requireJs will search all modules in the catalog where requireJs.js is when it's null.  
+  > (2) after configuring baseUrl, all module-url is base on baseUrl, e.g. if baseUrl is ' / ' and moduleA url is ' js/a.js ', finally the real url will be ' /js/a.js '.  
+  > (3) when you configured baseUrl, but in the situation that module url begin with ' / ' or url protocol like ' http/https ', requireJs will also search module by only module url you configured before, baseUrl will be ignored.
 
   ```js
     Require.config({
@@ -28,14 +28,14 @@ __1. config module info in main.js__
        // complete
        Require.config({
           module_name: {
-             url: 'http://www.xxx.xxx.js',  // remote url
+             url: 'xxx/xxx/js',  // remote url
              deps: ['a', 'b'],  // all depends the module needs
           }
        });
 
         // just configure url
        Require.config({
-         module_name: 'http://www.xxx.xxx.js'
+         module_name: 'xxx/xxx/js',
        });
     ```
 
@@ -44,8 +44,8 @@ __1. config module info in main.js__
     ```js
         Require.config({
           module_name: {
-            url: 'http://www.xxx.xxx.js',  // remote url
-            export: exports.name  // module-name export to requireJs
+            url: 'xxx/xxx/js',  // remote url
+            exports: exports-name  // module-name export to requireJs
           }
         });
     ```
@@ -89,9 +89,9 @@ __4. module info__
   ```js
     {
       module_name: {
-        url: 'http://www.xxx.xxx.js',  // 远程地址
-        deps: [dep1, dep2],  // 依赖
-        main: (function(){...})(),  // 模块的引用
+        url: '/xxx/xxx.js',  // real url
+        deps: [dep1, dep2],  // depends
+        main: (function(){...})(),  // stored in memory
       }
     }
   ```
@@ -100,13 +100,15 @@ __4. module info__
 ______________
 
 ```bash
-  # 1.cd example root directory
+  # 1.clone code
+  git clone https://github.com:NoJsJa/requireJs-nojsja.git
+  # 2.cd example root directory
   cd example;
-  # 2.install all packages
+  # 3.install all packages
   npm install;
-  # 3.run the demo
+  # 4.run the demo
   npm start;
-  # 4.open browser and check console
+  # 5.open browser and check console
   open the page 'http://localhost:3000/index';
 ```
 
@@ -133,12 +135,12 @@ __2. main.js__
     Require.config({
       baseUrl: '/',
       paths: {
-        /*   引用测试1配置   */
+        /*   config test 1   */
         'moduleA': './javascripts/moduleA.js',  // 相对于当前目录
         'moduleB': '/javascripts/moduleB.js',  // 不使用baseUrl
         'moduleC': 'javascripts/moduleC.js',
 
-        /*   引用测试2配置   */
+        /*   config test 2   */
         'moduleD': {
           url: './javascripts/moduleD.js',
           deps: ['moduleE', 'moduleF'],
@@ -149,6 +151,13 @@ __2. main.js__
           deps: ['moduleG'],
         },
         'moduleG': 'javascripts/moduleG.js',
+      },
+      shim: {
+        /*   config test 3   */
+        'moduleH': {
+          url: 'javascripts/moduleH.js',
+          exports: 'log',
+        },
       }
     });
 
@@ -165,6 +174,12 @@ __2. main.js__
     Require.require(['moduleD'], function (d) {
       console.log('-------- require test 2 --------');
       d.log();
+    });
+
+    /* ------------------- require demo3 ------------------- */
+    Require.require(['moduleH'], function (h) {
+      console.log('-------- require test 3 --------');
+      h.log();
     });
 
 ```
@@ -194,4 +209,5 @@ __3. module.js__
     };
 
   }, 'moduleD');
+  ...
 ```
