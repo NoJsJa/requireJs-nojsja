@@ -293,13 +293,10 @@ var Require = (function () {
     };
 
     /* 根据依赖情况设置属性 */
-    var setDepends = function (deps, dependsTree, flag) {
+    var setDepends = function (deps, dependsTree) {
       if (!deps || !deps.length) return;
 
       deps.map(function (depend) {
-        if (flag[depend]) return;
-        flag[depend] = true;
-
         var _tree =  new Tree(depend);
 
         if (isShim(depend)) {
@@ -310,7 +307,7 @@ var Require = (function () {
           }else {
             // 存储引用、递归依赖
             dependsTree.add(_tree);
-            setDepends(R_config.paths[depend].deps, _tree, flag);
+            setDepends(R_config.paths[depend].deps, _tree);
           }
         }
       });
@@ -326,17 +323,32 @@ var Require = (function () {
       }
     };
 
+    /* array 去重保留第一个重复项 */
+    var arrayFilter = function (array) {
+      var flag = {};
+      for (var i = 0; i < array.length; i++) {
+        if ( flag[ array[i] ] ) {
+          array.splice(i, 1);
+          i--;
+        }else {
+          flag[ array[i] ] = true;
+        }
+      }
+
+      return array;
+    };
+
     return function (depends, name) {
       var dependsTree = new Tree('dependsTree');
       var dependsArray = [];
       var dependsFlag = {};  // 解决循环依赖
 
-      dependsFlag[name] = true;  // 表明此模块被引用了一次
-
       // 构建依赖分析树
-      setDepends(depends, dependsTree, dependsFlag);
+      setDepends(depends, dependsTree);
       // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组，按照顺序解析所有代码
       sortDepends(dependsArray, dependsTree);
+      // 数组依赖去重
+      arrayFilter(dependsArray);
 
       return dependsArray;
     };
@@ -382,6 +394,9 @@ var Require = (function () {
       throw new Error('module: ' + name + ' should be configure before define it!');
       return;
     }
+
+    /*   检查模块是否已经创建   */
+    if (R_modules[name]) return
 
     // 解决依赖
     evalRequest(deps, function () {
