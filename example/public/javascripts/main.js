@@ -4,7 +4,7 @@
   2. 引用模块
 ----------------------------------------------------------------------------- */
 
-/* ------------------- 配置 ------------------- */
+/* ------------------- config ------------------- */
 Require.config({
   // baseUrl: '/javascripts/',
   paths: {
@@ -23,7 +23,10 @@ Require.config({
       url: 'moduleF.js',
       deps: ['moduleG'],
     },
-    'moduleG': 'moduleG.js',
+    'moduleG': {
+      url: 'moduleG.js',
+      deps: ['moduleF'],
+    },
   },
   shim: {
     /*   引用测试3配置   */
@@ -56,6 +59,7 @@ window.console.error = function (info) {
   console.log(info);
   Console.consoleDom.style.color = "#e9471c";
 };
+
 
 /* ************************* main ************************* */
 

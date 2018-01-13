@@ -23,6 +23,7 @@ var Tree = (function () {
   _Tree.prototype.add = function (tree) {
     if ( !(tree instanceof Tree) ) {
       throw(new Error('the param of func Tree.add must be an instance of Tree'));
+      return;
     }
     tree.setFather(this);
     this.children.push(tree);
@@ -32,6 +33,7 @@ var Tree = (function () {
   _Tree.prototype.setFather = function (father) {
     if ( !(father instanceof Tree) ) {
       throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
+      return;
     }
     this.father = father;
   };
@@ -40,6 +42,7 @@ var Tree = (function () {
   _Tree.prototype.delete = function (tree) {
     if ( !(tree instanceof Tree) ) {
       throw(new Error('the param of func Tree.delete must be an instance of Tree'));
+      return;
     }
     this.children.map(function (child, i) {
       if (child === tree) {
@@ -71,6 +74,8 @@ var Tree = (function () {
 
   return _Tree;
 })();
+
+
 
 
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
@@ -165,12 +170,13 @@ var Require = (function () {
 
   /**
    * [evalRequest 分析依赖 => 同时异步下载所有依赖 => 按顺序解析依赖 => 回调函数 - 核心算法]
-   * @param  {Array}   deps [所有依赖模块]
-   * @param  {Function} callback  [回调函数]
+   * @param  { Array }    deps [所有依赖模块]
+   * @param  { Function } callback  [回调函数]
+   * @param  { String }   name  [模块名]
    */
-  var evalRequest = function (pathArray, callback) {
+  var evalRequest = function (pathArray, callback, name) {
     var requestFlag = {};
-    var dependsArray = dependsAnalysis(pathArray);  // 排好顺序的依赖数组
+    var dependsArray = dependsAnalysis(pathArray, name);  // 排好顺序的依赖数组
 
     /*   js代码编译   */
     var jsParser = function (jstring, isShim, name) {
@@ -287,10 +293,13 @@ var Require = (function () {
     };
 
     /* 根据依赖情况设置属性 */
-    var setDepends = function (deps, dependsTree) {
+    var setDepends = function (deps, dependsTree, flag) {
       if (!deps || !deps.length) return;
 
       deps.map(function (depend) {
+        if (flag[depend]) return;
+        flag[depend] = true;
+
         var _tree =  new Tree(depend);
 
         if (isShim(depend)) {
@@ -301,13 +310,13 @@ var Require = (function () {
           }else {
             // 存储引用、递归依赖
             dependsTree.add(_tree);
-            setDepends(R_config.paths[depend].deps, _tree);
+            setDepends(R_config.paths[depend].deps, _tree, flag);
           }
         }
       });
     };
 
-    /* 深度遍历依赖树 */
+    /* 按照深度优先遍历依赖树 */
     var sortDepends = function (dependsArray, dependsTree) {
       if (dependsTree.hasChild()) {
         dependsTree.children.map(function (child) {
@@ -317,12 +326,15 @@ var Require = (function () {
       }
     };
 
-
-    return function (depends) {
+    return function (depends, name) {
       var dependsTree = new Tree('dependsTree');
       var dependsArray = [];
+      var dependsFlag = {};  // 解决循环依赖
+
+      dependsFlag[name] = true;  // 表明此模块被引用了一次
+
       // 构建依赖分析树
-      setDepends(depends, dependsTree);
+      setDepends(depends, dependsTree, dependsFlag);
       // 确定依赖后深度优先遍历依赖树按照顺序把所有依赖放进数组，按照顺序解析所有代码
       sortDepends(dependsArray, dependsTree);
 
@@ -346,12 +358,13 @@ var Require = (function () {
     // 获取依赖
     var getDeps = function (dp) {
       return dp.map( (function (d) {
-        return R_modules[d].main;
+        return R_modules[d] ? R_modules[d].main : null;
       }) );
     };
 
     if (arguments.length < 2) {
       throw (new Error('params count in func "define" is incorrect!'));
+      return;
     }
 
     if (arguments.length == 2) {
@@ -366,7 +379,8 @@ var Require = (function () {
     }else if (R_config.shim[name]) {
       _configType = 'shim';
     }else {
-      throw new Error('module: ' + name + 'should be configure before define it!');
+      throw new Error('module: ' + name + ' should be configure before define it!');
+      return;
     }
 
     // 解决依赖
@@ -377,7 +391,7 @@ var Require = (function () {
         main: typeof done === 'function' ?
                 done.apply(null, getDeps(deps)) : done
       };
-    });
+    }, name);
   };
 
   /* ------------------- 配置 ------------------- */
@@ -387,8 +401,10 @@ var Require = (function () {
    * @param  { Object } object [配置对象]
    */
   var config = function (object) {
-    if (!object || typeof object !== 'object')
+    if (!object || typeof object !== 'object') {
       throw(new Error('params must be an object in func config'));
+      return;
+    }
 
     // 获取真实路径
     var getUrl = function (_object, _url) {
@@ -440,10 +456,14 @@ var Require = (function () {
    * @param  { Function } callback [包裹作用域的回调函数]
    */
   var require = function (deps, callback) {
+    if (!deps) {
+      throw(new Error('the type of param deps must be array in func require!'));
+      return;
+    }
     /*   引用依赖模块   */
     var getDeps = function (dp) {
       return dp.map(function (d) {
-        return R_modules[d].main;
+        return R_modules[d] ? R_modules[d].main : null;
       });
     };
 
@@ -453,22 +473,43 @@ var Require = (function () {
   };
 
   /* ------------------- 框架初始化时的方法 ------------------- */
-  void function () {
+  function init() {
+    var that = this;
+    /*   自动设置baseUrl   */
     var scriptDom =  document.querySelector('script');
-    // http://localhost:3000/javascripts/requireJs.js
+    // e.g. http://localhost:3000/javascripts/requireJs.js
     var scriptUrl = scriptDom.src;
     var url = scriptUrl.split('/');
     url.pop();
     url = url.join('/');
     R_config.baseUrl = url;
-  }();
+
+    /*   尝试寻找主入口文件并执行   */
+    var main = scriptDom.getAttribute('data-main') || null;
+    if (main) {
+      Utils.request('get', main, null, function (rspData) {
+        /*   删除初始化方法   */
+        delete(that.init);
+        /*   解析主程序   */
+        eval(rspData);
+      });
+    }else {
+      /*   删除初始化方法   */
+      delete(that.init);
+    }
+
+  };
 
 
   /* ------------------- 返回Require调用接口 ------------------- */
   return {
-    define: define,
-    config: config,
-    require: require
+    define: define,  // 定义模块
+    config: config,  // 配置paths, shim, baseUrl
+    require: require,  // 引用一个模块
+    init: init,  // 初始化之后会自动删除
   };
 
 })();
+
+/*   initialize requireJs   */
+Require.init();

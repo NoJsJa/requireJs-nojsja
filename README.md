@@ -117,15 +117,16 @@ __1. index.html__
 ```html
   <head>
     <!-- import -->
-    <script type="text/javascript" src="/javascripts/requireJs.js"></script>
+    <!-- you can specify data-main as main-entrance in requireJs script -->
+    <script type="text/javascript" src="/javascripts/requireJs.js" data-main="/javascripts/main.js"></script>
   </head>
 
   <body>
     <div>...</div>
   </body>
 
-  <!-- main entrance -->
-  <script type="text/javascript" src="/javascripts/main.js"></script>
+  <!-- specify main-entrance if it's not be declared in requireJs script -->
+  <!-- <script type="text/javascript" src="/javascripts/main.js"></script> -->
 ```
 
 __2. main.js__  
@@ -150,7 +151,10 @@ __2. main.js__
           url: 'moduleF.js',
           deps: ['moduleG'],
         },
-        'moduleG': 'moduleG.js',
+        'moduleG': {
+          url: 'moduleG.js',
+          deps: ['moduleF'],
+        },
       },
       shim: {
         /*   config test 3   */
