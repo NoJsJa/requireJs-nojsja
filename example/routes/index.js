@@ -5,7 +5,7 @@ const path = require('path');
 const pubPath = path.join(__dirname, '../public');
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/main', function(req, res, next) {
   res.sendFile(path.join(pubPath, 'index.html'));
 });
 

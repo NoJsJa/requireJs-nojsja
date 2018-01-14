@@ -25,7 +25,7 @@ Require.config({
     },
     'moduleG': {
       url: 'moduleG.js',
-      deps: ['moduleF'],
+      deps: [],
     },
   },
   shim: {

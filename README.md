@@ -109,7 +109,7 @@ ______________
   # 4.run the demo
   npm start;
   # 5.open browser and check console
-  open the page 'http://localhost:3000/index';
+  open the page 'http://localhost:3000';
 ```
 
 __1. index.html__  
@@ -153,7 +153,7 @@ __2. main.js__
         },
         'moduleG': {
           url: 'moduleG.js',
-          deps: ['moduleF'],
+          deps: [],
         },
       },
       shim: {
