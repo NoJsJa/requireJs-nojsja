@@ -203,7 +203,7 @@ var Require = (function () {
       // 所有依赖下载完成
       if (Object.keys(rFlag).length == dependsArray.length) {
         // 现在按照顺序呢parse代码
-        Object.keys(rFlag).map(function (key, i) {
+        dependsArray.map(function (key, i) {
           // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
           jsParser(rFlag[key], isShim, key);
         });
