@@ -80,7 +80,7 @@ var Tree = (function () {
 
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
 var Require = (function () {
-
+  
   /* ------------------- Require配置文件 ------------------- */
   var R_config = {
     baseUrl: null,  // 默认根目录
