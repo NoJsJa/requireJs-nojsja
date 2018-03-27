@@ -9,74 +9,6 @@
       保证都是同步的代码。
 ----------------------------------------------------------------------------- */
 
-/* ------------------- Tree树型数据 ------------------- */
-var Tree = (function () {
-
-  var _Tree = function (name) {
-    this.name = name;  // 节点名
-    this.children = [];  // 所有子节点
-    this.father = null;  // 父节点
-    this.data = null;  // 节点携带的数据
-  };
-
-  /* 添加子节点 */
-  _Tree.prototype.add = function (tree) {
-    if ( !(tree instanceof Tree) ) {
-      throw(new Error('the param of func Tree.add must be an instance of Tree'));
-      return;
-    }
-    tree.setFather(this);
-    this.children.push(tree);
-  };
-
-  /* 设置节点名 */
-  _Tree.prototype.setFather = function (father) {
-    if ( !(father instanceof Tree) ) {
-      throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
-      return;
-    }
-    this.father = father;
-  };
-
-  /* 删除子节点 */
-  _Tree.prototype.delete = function (tree) {
-    if ( !(tree instanceof Tree) ) {
-      throw(new Error('the param of func Tree.delete must be an instance of Tree'));
-      return;
-    }
-    this.children.map(function (child, i) {
-      if (child === tree) {
-        this.children.splice(i, 1);
-        tree.setFather(null);
-      }
-    })
-
-  };
-
-  /* 清空子节点 */
-  _Tree.prototype.wipe = function () {
-    this.children.map(function (child) {
-      child.setFather(null);
-    });
-    this.children = [];
-  };
-
-  /* 保存数据 */
-  _Tree.prototype.setData = function (data) {
-    this.data = data;
-  };
-
-  /* 判断是否有子节点 */
-  _Tree.prototype.hasChild = function () {
-    if (this.children && this.children.length) return true;
-    return false;
-  }
-
-  return _Tree;
-})();
-
-
-
 
 /* ***************** 用于解决页面依赖混乱和异步加载js ******************* */
 var Require = (function () {
@@ -96,6 +28,72 @@ var Require = (function () {
      //   main: {},
      // }
   };
+
+  /* ------------------- Tree树型数据 ------------------- */
+  var Tree = (function () {
+
+    var _Tree = function (name) {
+      this.name = name;  // 节点名
+      this.children = [];  // 所有子节点
+      this.father = null;  // 父节点
+      this.data = null;  // 节点携带的数据
+    };
+
+    /* 添加子节点 */
+    _Tree.prototype.add = function (tree) {
+      if ( !(tree instanceof Tree) ) {
+        throw(new Error('the param of func Tree.add must be an instance of Tree'));
+        return;
+      }
+      tree.setFather(this);
+      this.children.push(tree);
+    };
+
+    /* 设置节点名 */
+    _Tree.prototype.setFather = function (father) {
+      if ( !(father instanceof Tree) ) {
+        throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
+        return;
+      }
+      this.father = father;
+    };
+
+    /* 删除子节点 */
+    _Tree.prototype.delete = function (tree) {
+      if ( !(tree instanceof Tree) ) {
+        throw(new Error('the param of func Tree.delete must be an instance of Tree'));
+        return;
+      }
+      this.children.map(function (child, i) {
+        if (child === tree) {
+          this.children.splice(i, 1);
+          tree.setFather(null);
+        }
+      })
+
+    };
+
+    /* 清空子节点 */
+    _Tree.prototype.wipe = function () {
+      this.children.map(function (child) {
+        child.setFather(null);
+      });
+      this.children = [];
+    };
+
+    /* 保存数据 */
+    _Tree.prototype.setData = function (data) {
+      this.data = data;
+    };
+
+    /* 判断是否有子节点 */
+    _Tree.prototype.hasChild = function () {
+      if (this.children && this.children.length) return true;
+      return false;
+    }
+
+    return _Tree;
+  })();
 
 
   /* ------------------- 工具函数 ------------------- */
@@ -175,45 +173,67 @@ var Require = (function () {
    * @param  { String }   name  [模块名]
    */
   var evalRequest = function (pathArray, callback, name) {
-    var requestFlag = {};
-    var dependsArray = dependsAnalysis(pathArray, name);  // 排好顺序的依赖数组
+    var requestFlag = {},
+        pluginFlag = {};
+    // 筛选插件
+    var pluginsArray = pluginsAnalysis(pathArray);
+    // 排好顺序的依赖数组
+    var dependsArray = dependsAnalysis(pathArray, name);
 
-    /*   js代码编译   */
+    // console.log(pluginsArray);
+
+    /*   js代码转译   */
     var jsParser = function (jstring, isShim, name) {
+      var htm = '',
+          $script = document.createElement('script');
+
+      $script.setAttribute('type', 'text/javascript');
+
       if (typeof jstring === 'string') {
         if (isShim) {
-          eval(
-            "Require.define(" + JSON.stringify(R_config.shim[name].deps) +", function() {" +
+          htm =
+            " Require.define(" + JSON.stringify(R_config.shim[name].deps) +", function() { " +
               jstring +
-              "return {" +
-                R_config.shim[name].exports + ":" +
-                R_config.shim[name].exports +
-              "};" +
+              " return { " +
+                R_config.shim[name].exports + ":" + R_config.shim[name].exports +
+              " }; " +
 
-            "}, '"+ name + "' );"
-          );
+            " }, '"+ name + "' ); ";
         }else {
-          eval(jstring);
+          htm = jstring;
         }
+
+        $script.innerHTML = htm;
+        document.head.appendChild($script);
+
       }
     };
 
     /*   检查是否下载了所有依赖   */
-    var checkDeps = function (rFlag, isShim) {
-      // 所有依赖下载完成
-      if (Object.keys(rFlag).length == dependsArray.length) {
-        // 现在按照顺序呢parse代码
+    var checkDeps = function (rFlag, pFlag) {
+      // 所有依赖处理完成
+      if (Object.keys(rFlag).length === dependsArray.length) {
         dependsArray.map(function (key, i) {
           // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
-          jsParser(rFlag[key], isShim, key);
+          jsParser(rFlag[key].main, rFlag[key].isShim, key);
         });
-        // 所有模块编译完成后调用回调函数
-        callback();
+      }else {
+        return;
+      }
+
+      // 所有插件处理完成
+      if (Object.keys(pFlag).length === pluginsArray.length) {
+
+        Object.keys(pFlag).forEach(function (pf, i) {
+          pluginsArray[i] = pFlag[pf];
+        });
+
+        callback(pluginsArray);
       }
     };
 
     // 第一次检查依赖
-    checkDeps(requestFlag, false);
+    checkDeps(requestFlag, false, pluginFlag);
 
     // 下载所有依赖
     dependsArray.map(function (path) {
@@ -228,14 +248,20 @@ var Require = (function () {
         // 如果模块已经被下载
         if (R_modules[path.name]) {
           // 记录请求
-          requestFlag[path.name] = R_modules[path.name].main;
-          checkDeps(requestFlag, false);
+          requestFlag[path.name] = {
+            main: R_modules[path.name].main,
+            isShim: false,
+          };
+          checkDeps(requestFlag, pluginFlag);
         }else {
           Utils.request('get', path.url, null, function (rspData) {
             // 记录请求
-            requestFlag[path.name] = rspData;
+            requestFlag[path.name] = {
+              main: rspData,
+              isShim: false,
+            };
             // 检查是否下载完成
-            checkDeps(requestFlag, false);
+            checkDeps(requestFlag, pluginFlag);
           });
         }
       }
@@ -250,14 +276,20 @@ var Require = (function () {
         // 如果模块已经被下载
         if (R_modules[path.name]) {
           // 记录请求
-          requestFlag[path.name] = R_modules[path.name].main;
-          checkDeps(requestFlag, true);
+          requestFlag[path.name] = {
+            main: R_modules[path.name].main,
+            isShim: true,
+          };
+          checkDeps(requestFlag, pluginFlag);
         }else {
 
           Utils.request('get', path.url, null, function (rspData) {
             // 记录请求
-            requestFlag[path.name] = rspData;
-            checkDeps(requestFlag, true);
+            requestFlag[path.name] = {
+              main: rspData,
+              isShim: true,
+            };
+            checkDeps(requestFlag, pluginFlag);
           });
         }
 
@@ -267,7 +299,35 @@ var Require = (function () {
 
     });
 
+    // 下载所有插件并处理指定url的文件
+    pluginsArray.map(function (pluginStr, i) {
+
+      var plugin = pluginStr.split('!')[0];
+      var url = pluginStr.split('!')[1];
+      pluginFlag[plugin] = url;
+
+      checkDeps(requestFlag, pluginFlag);
+    });
+
   };
+
+  /* ------------------- 模块插件筛选 ------------------- */
+  var pluginsAnalysis = function (depends) {
+    if (!depends || !depends.length) return [];
+
+    var pluginsArray = [];
+
+    for (var i = 0; i < depends.length; i++) {
+      if (depends[i].indexOf('!') !== -1) {
+        pluginsArray.push(depends[i]);
+        depends.splice(i, 1);
+        i--;
+      }
+    }
+
+    return pluginsArray;
+  };
+
 
   /* ------------------- 模块依赖分析 构建模块依赖树 ------------------- */
   var dependsAnalysis = (function () {
@@ -463,7 +523,7 @@ var Require = (function () {
 
   };
 
-  /* ------------------- 引入模块 ------------------- */
+  /* ------------------- 引入模块-允许使用!加载插件 ------------------- */
 
   /**
    * [require 引用一个模块]
@@ -487,9 +547,14 @@ var Require = (function () {
     });
   };
 
+  /* ------------------- requireJs插件 ------------------- */
+  window.__RequirePlugins__ = {
+    __request__: Utils.request.bind(this),
+    __getXMLHttpRequest__: Utils.getXMLHttpRequest.bind(this),
+  };
+
   /* ------------------- 框架初始化时的方法 ------------------- */
-  function init() {
-    var that = this;
+  (function init() {
     /*   自动设置baseUrl   */
     var scriptDom =  document.querySelector('script');
     // e.g. http://localhost:3000/javascripts/requireJs.js
@@ -503,28 +568,17 @@ var Require = (function () {
     var main = scriptDom.getAttribute('data-main') || null;
     if (main) {
       Utils.request('get', main, null, function (rspData) {
-        /*   删除初始化方法   */
-        delete(that.init);
         /*   解析主程序   */
         eval(rspData);
       });
-    }else {
-      /*   删除初始化方法   */
-      delete(that.init);
     }
-
-  };
-
+  })();
 
   /* ------------------- 返回Require调用接口 ------------------- */
   return {
     define: define,  // 定义模块
     config: config,  // 配置paths, shim, baseUrl
     require: require,  // 引用一个模块
-    init: init,  // 初始化之后会自动删除
   };
 
 })();
-
-/*   initialize requireJs   */
-Require.init();
