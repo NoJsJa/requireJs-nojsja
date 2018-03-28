@@ -30,43 +30,41 @@ var Require = (function () {
   };
 
   /* ------------------- Tree树型数据 ------------------- */
-  var Tree = (function () {
-
-    var _Tree = function (name) {
-      this.name = name;  // 节点名
-      this.children = [];  // 所有子节点
-      this.father = null;  // 父节点
-      this.data = null;  // 节点携带的数据
-    };
+  var Tree = function (name) {
+    var that = this;
+    this.name = name;  // 节点名
+    this.children = [];  // 所有子节点
+    this.father = null;  // 父节点
+    this.data = null;  // 节点携带的数据
 
     /* 添加子节点 */
-    _Tree.prototype.add = function (tree) {
+    this.add = function (tree) {
       if ( !(tree instanceof Tree) ) {
         throw(new Error('the param of func Tree.add must be an instance of Tree'));
         return;
       }
       tree.setFather(this);
-      this.children.push(tree);
+      that.children.push(tree);
     };
 
     /* 设置节点名 */
-    _Tree.prototype.setFather = function (father) {
+    this.setFather = function (father) {
       if ( !(father instanceof Tree) ) {
         throw(new Error('the param of func Tree.setFather must be an instance of Tree'));
         return;
       }
-      this.father = father;
+      that.father = father;
     };
 
     /* 删除子节点 */
-    _Tree.prototype.delete = function (tree) {
+    this.delete = function (tree) {
       if ( !(tree instanceof Tree) ) {
         throw(new Error('the param of func Tree.delete must be an instance of Tree'));
         return;
       }
-      this.children.map(function (child, i) {
+      that.children.map(function (child, i) {
         if (child === tree) {
-          this.children.splice(i, 1);
+          that.children.splice(i, 1);
           tree.setFather(null);
         }
       })
@@ -74,52 +72,61 @@ var Require = (function () {
     };
 
     /* 清空子节点 */
-    _Tree.prototype.wipe = function () {
-      this.children.map(function (child) {
+    this.wipe = function () {
+      that.children.map(function (child) {
         child.setFather(null);
       });
-      this.children = [];
+      that.children = [];
     };
 
     /* 保存数据 */
-    _Tree.prototype.setData = function (data) {
-      this.data = data;
+    this.setData = function (data) {
+      that.data = data;
     };
 
     /* 判断是否有子节点 */
-    _Tree.prototype.hasChild = function () {
-      if (this.children && this.children.length) return true;
+    this.hasChild = function () {
+      if (that.children && that.children.length) return true;
       return false;
     }
-
-    return _Tree;
-  })();
-
+  };
 
   /* ------------------- 工具函数 ------------------- */
   var Utils = {
 
     /*   发送请求   */
-    request: function (method, url, data, callback) {
+    request: function (method, url, data, callback, header, responseType) {
 
       var objXMLHttp = this.getXMLHttpRequest();
+      var timer;
       if (!objXMLHttp) return;
 
       objXMLHttp.open(method, url, true);
       method = method.toUpperCase();
-      if(method == ("POST")){
+
+      // 设置请求头
+      header && Object.keys(header).forEach(function (key) {
+        objXMLHttp.setRequestHeader(key, header[key]);
+      });
+
+      // 设置响应值类型
+      responseType && (objXMLHttp.responseType = responseType);
+
+      if(method == "POST"){
           objXMLHttp.setRequestHeader('Content-type', 'application/json; charset=utf-8');
           objXMLHttp.send(data);
+      }else {
+        objXMLHttp.send(null);
+      }
 
-      }
-      if(method == ("GET")){
-          objXMLHttp.send(null);
-      }
+      // 5秒延时
+      timer = setTimeout(function () { callback(null);}, 10000);
 
       //设置状态改变的回调函数
       objXMLHttp.onreadystatechange = function () {
           if(objXMLHttp.readyState == 4 &&
               (objXMLHttp.status == 200 || objXMLHttp.status == 304)){
+              clearTimeout(timer);
               callback.call(null, objXMLHttp.responseText);
           }
       };
@@ -149,9 +156,7 @@ var Require = (function () {
                 new ActiveXObject(versions[i]);
                 arguments.callee.activeXString = versions[i];
                 break;
-              } catch (e) {
-
-              } finally { }
+              } catch (e) { }
             }
           }
           return new ActiveXObject(arguments.callee.activeXString);
@@ -173,14 +178,13 @@ var Require = (function () {
    * @param  { String }   name  [模块名]
    */
   var evalRequest = function (pathArray, callback, name) {
+    // 指示插件和依赖是否下载完毕
     var requestFlag = {},
         pluginFlag = {};
     // 筛选插件
     var pluginsArray = pluginsAnalysis(pathArray);
     // 排好顺序的依赖数组
     var dependsArray = dependsAnalysis(pathArray, name);
-
-    // console.log(pluginsArray);
 
     /*   js代码转译   */
     var jsParser = function (jstring, isShim, name) {
@@ -212,28 +216,26 @@ var Require = (function () {
     /*   检查是否下载了所有依赖   */
     var checkDeps = function (rFlag, pFlag) {
       // 所有依赖处理完成
-      if (Object.keys(rFlag).length === dependsArray.length) {
-        dependsArray.map(function (key, i) {
-          // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
-          jsParser(rFlag[key].main, rFlag[key].isShim, key);
-        });
-      }else {
-        return;
+      if (Object.keys(rFlag).length !== dependsArray.length ||
+          Object.keys(pFlag).length !== pluginsArray.length) {
+          return;
       }
+
+      dependsArray.map(function (key, i) {
+        // 这个方法是同步的因为所有依赖是按依赖的特定顺序解析的
+        jsParser(rFlag[key].main, rFlag[key].isShim, key);
+      });
 
       // 所有插件处理完成
-      if (Object.keys(pFlag).length === pluginsArray.length) {
+      Object.keys(pFlag).forEach(function (pf, i) {
+        pluginsArray[i] = pFlag[pf];
+      });
 
-        Object.keys(pFlag).forEach(function (pf, i) {
-          pluginsArray[i] = pFlag[pf];
-        });
-
-        callback(pluginsArray);
-      }
+      callback(pluginsArray);
     };
 
     // 第一次检查依赖
-    checkDeps(requestFlag, false, pluginFlag);
+    checkDeps(requestFlag, pluginFlag);
 
     // 下载所有依赖
     dependsArray.map(function (path) {
@@ -303,10 +305,60 @@ var Require = (function () {
     pluginsArray.map(function (pluginStr, i) {
 
       var plugin = pluginStr.split('!')[0];
-      var url = pluginStr.split('!')[1];
-      pluginFlag[plugin] = url;
+      var tUrl = pluginStr.split('!')[1], oUrl;
+      // 占位数据
+      pluginFlag[plugin] = tUrl;
 
-      checkDeps(requestFlag, pluginFlag);
+      // 内置插件
+      if (__RequirePlugins__.__pluginMap[plugin]) {
+        oUrl = R_config.baseUrl + '/' + __RequirePlugins__.__pluginMap[plugin];
+        oUrl = oUrl.replace('//', '/');
+        // 插件已经加载
+        if (__RequirePlugins__[plugin]) {
+          __RequirePlugins__[plugin](tUrl, function (pData) {
+           pluginFlag[plugin] =  pData;
+           checkDeps(requestFlag, pluginFlag);
+         });
+        // 未加载则先加载插件
+        }else {
+          Utils.request('POST', oUrl, null, function (rspData) {
+            if (rspData) {
+              // 解析插件
+              eval(rspData);
+              // 使用插件处理指定url的数据
+              __RequirePlugins__[plugin] && __RequirePlugins__[plugin](tUrl, function (pData) {
+                pluginFlag[plugin] = pData;
+                checkDeps(requestFlag, pluginFlag);
+              });
+            }else {
+              checkDeps(requestFlag, pluginFlag);
+            }
+          });
+        }
+
+      // 自定义插件
+      }else {
+        oUrl = R_config.baseUrl + '/' + oUrl;
+        oUrl = oUrl.replace('//', '/');
+        // 获取插件名
+        plugin = plugin.split('/').pop().split('.').shift();
+        Utils.request('POST', oUrl, null, function (rspData) {
+          if (rspData) {
+            // 解析插件
+            eval(rspData);
+            // 使用插件处理指定url的数据
+            __RequirePlugins__[plugin] ?
+              __RequirePlugins__[plugin](tUrl, function (pData) {
+                pluginFlag[plugin] =  pData;
+                checkDeps(requestFlag, pluginFlag);
+              }) :
+              checkDeps(requestFlag, pluginFlag);
+          }else {
+            checkDeps(requestFlag, pluginFlag);
+          }
+        });
+      }
+
     });
 
   };
@@ -549,14 +601,31 @@ var Require = (function () {
 
   /* ------------------- requireJs插件 ------------------- */
   window.__RequirePlugins__ = {
-    __request__: Utils.request.bind(this),
-    __getXMLHttpRequest__: Utils.getXMLHttpRequest.bind(this),
+    __request: Utils.request.bind(this),
+    __getXMLHttpRequest: Utils.getXMLHttpRequest.bind(this),
+    __pluginMap: {
+      css: 'plugins/css.plugin.js',
+      image: 'plugins/image.plugin.js',
+    }
   };
 
   /* ------------------- 框架初始化时的方法 ------------------- */
   (function init() {
     /*   自动设置baseUrl   */
-    var scriptDom =  document.querySelector('script');
+    var scriptDom =  document.querySelectorAll('script');
+    if (scriptDom.length === 1) {
+      scriptDom = scriptDom[0];
+    }else {
+      for (var i = 0; i < scriptDom.length; i++) {
+        if (scriptDom[i].getAttribute('data-type') === 'require') {
+          scriptDom = scriptDom[i];
+          break;
+        }
+        if (i === scriptDom.length - 1) {
+          scriptDom = scriptDom[0];
+        }
+      }
+    }
     // e.g. http://localhost:3000/javascripts/requireJs.js
     var scriptUrl = scriptDom.src;
     var url = scriptUrl.split('/');
