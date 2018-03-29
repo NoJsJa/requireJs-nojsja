@@ -50,7 +50,7 @@ window.console.log = function (info) {
   Console.consoleDom.style = '';
   Console.log(info);
   Console.consoleDom.value =
-    Console.consoleDom.value + '\r\n' + '[' + Console.index + '] ' + info;
+    Console.consoleDom.value + '\r\n' + info;
   Console.index ++;
 };
 
@@ -63,23 +63,45 @@ window.console.error = function (info) {
 
 /* ************************* main ************************* */
 
-/* ------------------- require test 1 ------------------- */
+/* ------------------- module require test 1 ------------------- */
 Require.require(['moduleA', 'moduleB', 'moduleC'], function (a, b, c) {
-  console.log('-------- require test 1 --------');
+  console.log('-------- module require test 1 --------');
+  console.log('');
   a.log();
   b.log();
   c.log();
-  // console.trace(a);
+  console.log('');
 });
 
-/* ------------------- require test 2 ------------------- */
+/* ------------------- module require test 2 ------------------- */
 Require.require(['moduleD'], function (d) {
-  console.log('-------- require test 2 --------');
+  console.log('-------- module require test 2 --------');
+  console.log('');
   d.log();
+  console.log('');
 });
 
-/* ------------------- require test 3 ------------------- */
+/* ------------------- module require test 3 ------------------- */
 Require.require(['moduleH'], function (h) {
-  console.log('-------- require test 3 --------');
+  console.log('-------- module require test 3 --------');
+  console.log('');
   h.log();
+  console.log('');
+});
+
+/* ------------------- image require test 4 ------------------- */
+Require.require(['image!/favicon.ico'], function (image) {
+  console.log('-------- image require test 4 --------');
+  console.log('');
+  image ? console.log('image load success! look at left-top corner.') : console.log('image load error!');
+  image && document.body.appendChild(image);
+  console.log('');
+});
+
+/* ------------------- css require test 5 ------------------- */
+Require.require(['css!/css/test.css'], function (result) {
+  console.log('-------- css require test 5 --------');
+  console.log('');
+  result ? console.log('css load success!') : console.log('image load error!');
+  console.log('');
 });

@@ -37,6 +37,7 @@
   background-color: #f4f5f5;
   box-shadow: 0 0 5px grey;
   font-size: 1.3rem;
+  text-align: center;
 }
 .console-wrapper > textarea:focus {
   outline: 0;

@@ -96,7 +96,6 @@ var Require = (function () {
 
     /*   发送请求   */
     request: function (method, url, data, callback, header, responseType) {
-
       var objXMLHttp = this.getXMLHttpRequest();
       var timer;
       if (!objXMLHttp) return;
@@ -127,7 +126,7 @@ var Require = (function () {
           if(objXMLHttp.readyState == 4 &&
               (objXMLHttp.status == 200 || objXMLHttp.status == 304)){
               clearTimeout(timer);
-              callback.call(null, objXMLHttp.responseText);
+              callback.call(null, objXMLHttp.response || objXMLHttp.responseText);
           }
       };
     },
@@ -227,11 +226,17 @@ var Require = (function () {
       });
 
       // 所有插件处理完成
-      Object.keys(pFlag).forEach(function (pf, i) {
-        pluginsArray[i] = pFlag[pf];
-      });
+      var plugins = pluginsArray.map(function (plugin) {
+        plugin = plugin.split('!')[0];
+        if (__RequirePlugins__.__pluginMap[plugin]) {
+          return pFlag[plugin];
+        }else {
+          plugin = plugin.split('/').pop().split('.').shift();
+          return pFlag[plugin];
+        }
+      })
 
-      callback(pluginsArray);
+      callback(plugins);
     };
 
     // 第一次检查依赖
@@ -312,7 +317,6 @@ var Require = (function () {
       // 内置插件
       if (__RequirePlugins__.__pluginMap[plugin]) {
         oUrl = R_config.baseUrl + '/' + __RequirePlugins__.__pluginMap[plugin];
-        oUrl = oUrl.replace('//', '/');
         // 插件已经加载
         if (__RequirePlugins__[plugin]) {
           __RequirePlugins__[plugin](tUrl, function (pData) {
@@ -321,7 +325,7 @@ var Require = (function () {
          });
         // 未加载则先加载插件
         }else {
-          Utils.request('POST', oUrl, null, function (rspData) {
+          Utils.request('GET', oUrl, null, function (rspData) {
             if (rspData) {
               // 解析插件
               eval(rspData);
@@ -588,21 +592,21 @@ var Require = (function () {
       return;
     }
     /*   引用依赖模块   */
-    var getDeps = function (dp) {
+    var getDeps = function (dp, plugins) {
       return dp.map(function (d) {
-        return R_modules[d] ? R_modules[d].main : null;
+        return R_modules[d] ? R_modules[d].main : (plugins.shift() || null);
       });
     };
 
-    evalRequest(deps, function () {
-      callback.apply(null, getDeps(deps) );
+    evalRequest(deps.map(function (dp) {return dp;}), function (plugins) {
+      callback.apply(null, getDeps(deps, plugins) );
     });
   };
 
   /* ------------------- requireJs插件 ------------------- */
   window.__RequirePlugins__ = {
-    __request: Utils.request.bind(this),
-    __getXMLHttpRequest: Utils.getXMLHttpRequest.bind(this),
+    request: Utils.request,
+    getXMLHttpRequest: Utils.getXMLHttpRequest,
     __pluginMap: {
       css: 'plugins/css.plugin.js',
       image: 'plugins/image.plugin.js',

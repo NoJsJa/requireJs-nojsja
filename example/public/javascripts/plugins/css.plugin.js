@@ -1,7 +1,7 @@
 __RequirePlugins__.css = function (url, callback) {
   var that = this;
 
-  __RequirePlugins__.__request('POST', url, null, function (rspData) {
+  __RequirePlugins__.request('GET', url, null, function (rspData) {
     if (rspData) {
       var linkDom = document.createElement('style');
       linkDom.setAttribute('type', 'text/css');
@@ -13,4 +13,6 @@ __RequirePlugins__.css = function (url, callback) {
       callback(false);
     }
   });
+
+  var that = this;
 };
